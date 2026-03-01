@@ -12,7 +12,7 @@ from custom_components.touchline.climate import (
 )
 from custom_components.touchline.const import (
     OPERATION_MODE_AUTO,
-    OPERATION_MODE_HOLIDAY,
+    OPERATION_MODE_FROST,
     OPERATION_MODE_MANUAL,
 )
 
@@ -57,7 +57,7 @@ class TestPresetModeMappings:
         assert len(PRESET_MODES) == 6
         assert "Normal" in PRESET_MODES
         assert "Night" in PRESET_MODES
-        assert "Holiday" in PRESET_MODES
+        assert "Off" in PRESET_MODES
         assert "Pro 1" in PRESET_MODES
         assert "Pro 2" in PRESET_MODES
         assert "Pro 3" in PRESET_MODES
@@ -75,8 +75,8 @@ class TestPresetModeMappings:
         assert PRESET_MODES["Normal"].program == 0
         assert PRESET_MODES["Night"].mode == OPERATION_MODE_MANUAL
         assert PRESET_MODES["Night"].program == 0
-        assert PRESET_MODES["Holiday"].mode == OPERATION_MODE_HOLIDAY
-        assert PRESET_MODES["Holiday"].program == 0
+        assert PRESET_MODES["Off"].mode == OPERATION_MODE_FROST
+        assert PRESET_MODES["Off"].program == 0
         assert PRESET_MODES["Pro 1"].mode == OPERATION_MODE_AUTO
         assert PRESET_MODES["Pro 1"].program == 1
         assert PRESET_MODES["Pro 2"].mode == OPERATION_MODE_AUTO
@@ -122,11 +122,11 @@ class TestTouchlineClimateProperties:
         entity = _make_entity(_make_coordinator([dev]))
         assert entity.preset_mode == "Night"
 
-    def test_preset_mode_holiday(self):
-        """Test Holiday preset (HOLIDAY mode, program 0)."""
-        dev = _make_device(op_mode=OPERATION_MODE_HOLIDAY, week_program=0)
+    def test_preset_mode_off(self):
+        """Test Off preset (FROST mode, program 0)."""
+        dev = _make_device(op_mode=OPERATION_MODE_FROST, week_program=0)
         entity = _make_entity(_make_coordinator([dev]))
-        assert entity.preset_mode == "Holiday"
+        assert entity.preset_mode == "Off"
 
     def test_preset_mode_pro1(self):
         """Test Pro 1 preset (AUTO mode, program 1)."""
@@ -273,19 +273,19 @@ class TestTouchlineClimateActions:
         assert calls[1][0][1] == 0
 
     @pytest.mark.asyncio
-    async def test_set_preset_mode_holiday(self):
-        """Test setting preset to Holiday."""
+    async def test_set_preset_mode_off(self):
+        """Test setting preset to Off."""
         dev = _make_device()
         coordinator = _make_coordinator([dev])
         entity = _make_entity(coordinator)
 
-        await entity.async_set_preset_mode("Holiday")
+        await entity.async_set_preset_mode("Off")
 
-        # Should set mode to HOLIDAY (2) and program to 0
+        # Should set mode to FROST (3) and program to 0
         calls = entity.hass.async_add_executor_job.await_args_list
         assert len(calls) == 2
         assert calls[0][0][0] == dev.set_operation_mode
-        assert calls[0][0][1] == OPERATION_MODE_HOLIDAY
+        assert calls[0][0][1] == OPERATION_MODE_FROST
         assert calls[1][0][0] == dev.set_week_program
         assert calls[1][0][1] == 0
 
