@@ -18,6 +18,18 @@ CONTROLLER_STATUS_DESCRIPTION = SensorEntityDescription(
     entity_category=EntityCategory.DIAGNOSTIC,
 )
 
+CONTROLLER_DATETIME_DESCRIPTION = SensorEntityDescription(
+    key="controller_datetime",
+    name="Controller DateTime",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_ERROR_CODE_DESCRIPTION = SensorEntityDescription(
+    key="controller_error_code",
+    name="Controller Error Code",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -27,7 +39,11 @@ async def async_setup_entry(
     """Set up Touchline sensor entities from a config entry."""
     coordinator: TouchlineDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities([TouchlineControllerStatusSensor(coordinator)])
+    async_add_entities([
+        TouchlineControllerStatusSensor(coordinator),
+        TouchlineControllerDateTimeSensor(coordinator),
+        TouchlineControllerErrorCodeSensor(coordinator),
+    ])
 
 
 class TouchlineControllerStatusSensor(
@@ -48,7 +64,61 @@ class TouchlineControllerStatusSensor(
             name="Touchline Controller",
         )
 
+    def _update_device_info(self) -> None:
+        """Update device info with ownerKurzID once available."""
+        if self.coordinator.owner_kurz_id and self._attr_device_info:
+            self._attr_device_info["serial_number"] = self.coordinator.owner_kurz_id
+
     @property
     def native_value(self) -> str | None:
         """Return the system status."""
+        self._update_device_info()
         return self.coordinator.controller_status
+
+
+class TouchlineControllerDateTimeSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller datetime."""
+
+    entity_description = CONTROLLER_DATETIME_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the controller datetime sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_datetime"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the controller datetime in readable format."""
+        return self.coordinator.datetime
+
+
+class TouchlineControllerErrorCodeSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller error code."""
+
+    entity_description = CONTROLLER_ERROR_CODE_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the controller error code sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_error_code"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the controller error code."""
+        return self.coordinator.error_code

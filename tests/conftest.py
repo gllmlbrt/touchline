@@ -18,6 +18,9 @@ def mock_pytouchline_device():
     device.get_device_id.return_value = 1
     device.get_controller_id.return_value = 0
     device.get_status.return_value = "OK"
+    device.get_owner_kurz_id.return_value = "12345"
+    device.get_datetime.return_value = "2026-03-01 14:42:38"
+    device.get_error_code.return_value = "0"
     return device
 
 

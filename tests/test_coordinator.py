@@ -18,6 +18,9 @@ class TestTouchlineDataUpdateCoordinator:
         coordinator.devices = []
         coordinator.controller_id = None
         coordinator.controller_status = None
+        coordinator.owner_kurz_id = None
+        coordinator.datetime = None
+        coordinator.error_code = None
         return coordinator
 
     def test_fetch_data_sets_controller_id_and_status(self):
@@ -27,21 +30,30 @@ class TestTouchlineDataUpdateCoordinator:
         mock_device = MagicMock()
         mock_device.get_controller_id.return_value = 42
         mock_device.get_status.return_value = "Standby"
+        mock_device.get_owner_kurz_id.return_value = 42
+        mock_device.get_datetime.return_value = "2026-03-01 14:42:38"
+        mock_device.get_error_code.return_value = "0"
         coordinator.devices = [mock_device]
 
-        with patch("custom_components.touchline.PyTouchline"):
+        with patch("custom_components.touchline.ExtendedPyTouchline"):
             coordinator._fetch_data()
 
         assert coordinator.controller_id == 42
         assert coordinator.controller_status == "Standby"
+        assert coordinator.owner_kurz_id == "42"
+        assert coordinator.datetime == "2026-03-01 14:42:38"
+        assert coordinator.error_code == "0"
 
     def test_fetch_data_no_devices_skips_controller_info(self):
         """Test that _fetch_data with no devices leaves controller info unchanged."""
         coordinator = self._make_coordinator()
         coordinator.controller_id = None
         coordinator.controller_status = None
+        coordinator.owner_kurz_id = None
+        coordinator.datetime = None
+        coordinator.error_code = None
 
-        with patch("custom_components.touchline.PyTouchline") as mock_cls:
+        with patch("custom_components.touchline.ExtendedPyTouchline") as mock_cls:
             probe = MagicMock()
             probe.get_number_of_devices.return_value = "0"
             mock_cls.return_value = probe
@@ -51,3 +63,6 @@ class TestTouchlineDataUpdateCoordinator:
         assert result == []
         assert coordinator.controller_id is None
         assert coordinator.controller_status is None
+        assert coordinator.owner_kurz_id is None
+        assert coordinator.datetime is None
+        assert coordinator.error_code is None
