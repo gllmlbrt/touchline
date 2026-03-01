@@ -18,7 +18,8 @@ from custom_components.touchline.const import (
 
 
 def _make_device(
-    op_mode=0, week_program=0, current_temp=21.5, target_temp=22.0, name="Zone 1"
+    op_mode=0, week_program=0, current_temp=21.5, target_temp=22.0, name="Zone 1",
+    device_id=42, controller_id=0,
 ):
     device = MagicMock()
     device.get_name.return_value = name
@@ -28,6 +29,8 @@ def _make_device(
     device.get_target_temperature_low.return_value = 18.0
     device.get_operation_mode.return_value = op_mode
     device.get_week_program.return_value = week_program
+    device.get_device_id.return_value = device_id
+    device.get_controller_id.return_value = controller_id
     return device
 
 
@@ -172,6 +175,28 @@ class TestTouchlineClimateProperties:
         devices = [_make_device(), _make_device(), _make_device()]
         entity = _make_entity(_make_coordinator(devices), idx=2)
         assert entity.unique_id == "192.168.1.100_2"
+
+    def test_device_info_serial_number(self):
+        """Test that device info includes the hardware device ID as serial_number."""
+        dev = _make_device(device_id=99)
+        entity = _make_entity(_make_coordinator([dev]))
+        assert entity.device_info is not None
+        assert entity.device_info.get("serial_number") == "99"
+
+    def test_device_info_serial_number_none(self):
+        """Test that device info serial_number is None when device_id is None."""
+        dev = _make_device()
+        dev.get_device_id.return_value = None
+        entity = _make_entity(_make_coordinator([dev]))
+        assert entity.device_info is not None
+        assert entity.device_info.get("serial_number") is None
+
+    def test_device_info_via_device(self):
+        """Test that device info links to the controller via via_device."""
+        dev = _make_device()
+        entity = _make_entity(_make_coordinator([dev]))
+        assert entity.device_info is not None
+        assert entity.device_info.get("via_device") == ("touchline", "192.168.1.100_controller")
 
 
 class TestTouchlineClimateActions:
