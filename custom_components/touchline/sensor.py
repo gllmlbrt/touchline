@@ -23,7 +23,6 @@ CONTROLLER_STATUS_DESCRIPTION = SensorEntityDescription(
 CONTROLLER_DATETIME_DESCRIPTION = SensorEntityDescription(
     key="controller_datetime",
     name="Controller DateTime",
-    device_class=SensorDeviceClass.TIMESTAMP,
     entity_category=EntityCategory.DIAGNOSTIC,
 )
 
@@ -98,15 +97,17 @@ class TouchlineControllerDateTimeSensor(
         )
 
     @property
-    def native_value(self) -> datetime | None:
-        """Return the controller datetime as a datetime object."""
+    def native_value(self) -> str | None:
+        """Return the controller datetime as a formatted string."""
         if self.coordinator.datetime is None:
             return None
 
         try:
             # Controller returns Unix timestamp as a string
             timestamp = int(self.coordinator.datetime)
-            return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            # Format as ISO 8601 datetime string for display
+            return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
         except (ValueError, TypeError):
             # If parsing fails, return None
             return None
