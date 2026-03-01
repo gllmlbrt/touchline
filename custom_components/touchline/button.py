@@ -1,7 +1,7 @@
 """Button platform for Roth Touchline integration."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
@@ -11,6 +11,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+import homeassistant.util.dt as dt_util
 
 from . import TouchlineDataUpdateCoordinator
 from .const import DOMAIN
@@ -57,12 +58,10 @@ class TouchlineSyncTimeButton(
 
     async def async_press(self) -> None:
         """Handle the button press to sync time."""
-        # Get current system time in a format the controller expects
-        # The format will depend on what the controller expects
-        current_time = datetime.now()
+        # Get current time using Home Assistant's timezone-aware utility
+        current_time = dt_util.now()
 
-        # Format as timestamp or specific format expected by controller
-        # This may need adjustment based on controller requirements
+        # Format as timestamp for the controller
         datetime_value = int(current_time.timestamp())
 
         _LOGGER.info(f"Syncing time to controller: {current_time}")

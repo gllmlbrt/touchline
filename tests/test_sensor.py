@@ -1,5 +1,5 @@
 """Tests for the Roth Touchline sensor platform."""
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 from custom_components.touchline.sensor import (
@@ -92,6 +92,9 @@ class TestTouchlineControllerDateTimeSensor:
         result = sensor.native_value
         assert isinstance(result, datetime)
         assert result.timestamp() == 1709302958
+        # Verify the datetime is timezone-aware with UTC timezone
+        assert result.tzinfo is not None
+        assert result.tzinfo == timezone.utc
 
     def test_native_value_none(self):
         """Test that native_value returns None when datetime is not available."""

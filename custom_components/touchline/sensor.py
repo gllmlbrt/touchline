@@ -1,7 +1,7 @@
 """Sensor platform for Roth Touchline integration."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
@@ -106,7 +106,7 @@ class TouchlineControllerDateTimeSensor(
         try:
             # Controller returns Unix timestamp as a string
             timestamp = int(self.coordinator.datetime)
-            return datetime.fromtimestamp(timestamp)
+            return datetime.fromtimestamp(timestamp, tz=timezone.utc)
         except (ValueError, TypeError):
             # If parsing fails, return None
             return None
