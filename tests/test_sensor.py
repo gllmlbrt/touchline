@@ -1,6 +1,7 @@
 """Tests for the Roth Touchline sensor platform."""
 from datetime import datetime, timezone
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 from custom_components.touchline.sensor import (
     TouchlineControllerStatusSensor,
@@ -85,13 +86,22 @@ class TestTouchlineControllerDateTimeSensor:
         assert sensor.unique_id == "192.168.1.100_controller_datetime"
 
     def test_native_value(self):
-        """Test that native_value returns the controller datetime as formatted string."""
+        """Test that native_value returns the controller datetime as formatted string in local timezone."""
         # Unix timestamp 1709302958 = 2024-03-01 14:22:38 UTC
         coordinator = _make_coordinator(datetime_value="1709302958")
         sensor = TouchlineControllerDateTimeSensor(coordinator)
-        result = sensor.native_value
-        assert isinstance(result, str)
-        assert result == "2024-03-01 14:22:38 UTC"
+
+        # Mock dt_util to use Europe/Paris timezone (UTC+1 in winter)
+        with patch("custom_components.touchline.sensor.dt_util") as mock_dt_util:
+            # Mock get_default_time_zone to return Europe/Paris
+            mock_dt_util.get_default_time_zone.return_value = ZoneInfo("Europe/Paris")
+            # Mock utc_from_timestamp to return the UTC datetime
+            mock_dt_util.utc_from_timestamp.return_value = datetime.fromtimestamp(1709302958, tz=timezone.utc)
+
+            result = sensor.native_value
+            assert isinstance(result, str)
+            # In Europe/Paris (UTC+1), the time should be 15:22:38
+            assert result == "2024-03-01 15:22:38 CET"
 
     def test_native_value_none(self):
         """Test that native_value returns None when datetime is not available."""

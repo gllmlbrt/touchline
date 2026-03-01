@@ -10,6 +10,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+import homeassistant.util.dt as dt_util
 
 from . import TouchlineDataUpdateCoordinator
 from .const import DOMAIN
@@ -98,14 +99,15 @@ class TouchlineControllerDateTimeSensor(
 
     @property
     def native_value(self) -> str | None:
-        """Return the controller datetime as a formatted string."""
+        """Return the controller datetime as a formatted string in local timezone."""
         if self.coordinator.datetime is None:
             return None
 
         try:
             # Controller returns Unix timestamp as a string
             timestamp = int(self.coordinator.datetime)
-            dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            # Convert to datetime in Home Assistant's local timezone
+            dt = dt_util.utc_from_timestamp(timestamp).astimezone(dt_util.get_default_time_zone())
             # Format as ISO 8601 datetime string for display
             return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
         except (ValueError, TypeError):
