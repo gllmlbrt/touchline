@@ -86,11 +86,14 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
         super().__init__(coordinator)
         self._idx = idx
         self._attr_unique_id = f"{coordinator.host}_{idx}"
+        device_id = self._device.get_device_id()
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{coordinator.host}_{idx}")},
             manufacturer="Roth",
             model="Touchline",
             name=self._device_name,
+            serial_number=str(device_id) if device_id is not None else None,
+            via_device=(DOMAIN, f"{coordinator.host}_controller"),
         )
 
     @property

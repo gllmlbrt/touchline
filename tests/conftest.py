@@ -17,6 +17,7 @@ def mock_pytouchline_device():
     device.get_week_program.return_value = 0
     device.get_device_id.return_value = 1
     device.get_controller_id.return_value = 0
+    device.get_status.return_value = "OK"
     return device
 
 
