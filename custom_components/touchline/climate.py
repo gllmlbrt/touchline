@@ -22,7 +22,7 @@ from . import TouchlineDataUpdateCoordinator
 from .const import (
     DOMAIN,
     OPERATION_MODE_AUTO,
-    OPERATION_MODE_HOLIDAY,
+    OPERATION_MODE_FROST,
     OPERATION_MODE_MANUAL,
 )
 
@@ -39,7 +39,7 @@ class PresetMode(NamedTuple):
 PRESET_MODES = {
     "Normal": PresetMode(mode=OPERATION_MODE_AUTO, program=0),
     "Night": PresetMode(mode=OPERATION_MODE_MANUAL, program=0),
-    "Holiday": PresetMode(mode=OPERATION_MODE_HOLIDAY, program=0),
+    "Off": PresetMode(mode=OPERATION_MODE_FROST, program=0),
     "Pro 1": PresetMode(mode=OPERATION_MODE_AUTO, program=1),
     "Pro 2": PresetMode(mode=OPERATION_MODE_AUTO, program=2),
     "Pro 3": PresetMode(mode=OPERATION_MODE_AUTO, program=3),
