@@ -1,7 +1,9 @@
 """Sensor platform for Roth Touchline integration."""
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from datetime import datetime
+
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -21,6 +23,7 @@ CONTROLLER_STATUS_DESCRIPTION = SensorEntityDescription(
 CONTROLLER_DATETIME_DESCRIPTION = SensorEntityDescription(
     key="controller_datetime",
     name="Controller DateTime",
+    device_class=SensorDeviceClass.TIMESTAMP,
     entity_category=EntityCategory.DIAGNOSTIC,
 )
 
@@ -95,9 +98,18 @@ class TouchlineControllerDateTimeSensor(
         )
 
     @property
-    def native_value(self) -> str | None:
-        """Return the controller datetime in readable format."""
-        return self.coordinator.datetime
+    def native_value(self) -> datetime | None:
+        """Return the controller datetime as a datetime object."""
+        if self.coordinator.datetime is None:
+            return None
+
+        try:
+            # Controller returns Unix timestamp as a string
+            timestamp = int(self.coordinator.datetime)
+            return datetime.fromtimestamp(timestamp)
+        except (ValueError, TypeError):
+            # If parsing fails, return None
+            return None
 
 
 class TouchlineControllerErrorCodeSensor(

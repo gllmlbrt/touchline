@@ -1,4 +1,5 @@
 """Tests for the Roth Touchline sensor platform."""
+from datetime import datetime
 from unittest.mock import MagicMock
 
 from custom_components.touchline.sensor import (
@@ -13,7 +14,7 @@ def _make_coordinator(
     controller_id=0,
     host="192.168.1.100",
     owner_kurz_id="12345",
-    datetime="2026-03-01 14:42:38",
+    datetime_value="1709302958",
     error_code="0",
 ):
     coordinator = MagicMock()
@@ -21,7 +22,7 @@ def _make_coordinator(
     coordinator.controller_status = controller_status
     coordinator.controller_id = controller_id
     coordinator.owner_kurz_id = owner_kurz_id
-    coordinator.datetime = datetime
+    coordinator.datetime = datetime_value
     coordinator.error_code = error_code
     coordinator.data = []
     return coordinator
@@ -84,14 +85,23 @@ class TestTouchlineControllerDateTimeSensor:
         assert sensor.unique_id == "192.168.1.100_controller_datetime"
 
     def test_native_value(self):
-        """Test that native_value returns the controller datetime."""
-        coordinator = _make_coordinator(datetime="2026-03-01 14:42:38")
+        """Test that native_value returns the controller datetime as datetime object."""
+        # Unix timestamp 1709302958 = 2024-03-01 14:42:38 UTC
+        coordinator = _make_coordinator(datetime_value="1709302958")
         sensor = TouchlineControllerDateTimeSensor(coordinator)
-        assert sensor.native_value == "2026-03-01 14:42:38"
+        result = sensor.native_value
+        assert isinstance(result, datetime)
+        assert result.timestamp() == 1709302958
 
     def test_native_value_none(self):
         """Test that native_value returns None when datetime is not available."""
-        coordinator = _make_coordinator(datetime=None)
+        coordinator = _make_coordinator(datetime_value=None)
+        sensor = TouchlineControllerDateTimeSensor(coordinator)
+        assert sensor.native_value is None
+
+    def test_native_value_invalid(self):
+        """Test that native_value returns None for invalid timestamp."""
+        coordinator = _make_coordinator(datetime_value="invalid")
         sensor = TouchlineControllerDateTimeSensor(coordinator)
         assert sensor.native_value is None
 
@@ -110,6 +120,13 @@ class TestTouchlineControllerDateTimeSensor:
         coordinator = _make_coordinator()
         sensor = TouchlineControllerDateTimeSensor(coordinator)
         assert sensor.entity_description.entity_category == EntityCategory.DIAGNOSTIC
+
+    def test_device_class_timestamp(self):
+        """Test that the sensor uses TIMESTAMP device class."""
+        from homeassistant.components.sensor import SensorDeviceClass
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerDateTimeSensor(coordinator)
+        assert sensor.entity_description.device_class == SensorDeviceClass.TIMESTAMP
 
 
 class TestTouchlineControllerErrorCodeSensor:
