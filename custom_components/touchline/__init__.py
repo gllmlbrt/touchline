@@ -15,7 +15,7 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.CLIMATE, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.CLIMATE, Platform.SENSOR, Platform.BUTTON]
 
 SCAN_INTERVAL = timedelta(seconds=30)
 
@@ -57,6 +57,25 @@ class ExtendedPyTouchline(PyTouchline):
     def get_owner_kurz_id(self):
         """Get ownerKurzID value - same as controller_id."""
         return self.get_controller_id()
+
+    def set_datetime(self, datetime_value):
+        """Set R0.DateTime value to sync controller time."""
+        # For R0 parameters, we need to write directly to R0.DateTime
+        # instead of using G prefix
+        try:
+            import httplib2
+            h = httplib2.Http()
+            (resp, content) = h.request(
+                uri=PyTouchline._ip_address +
+                    self._write_path + "?" +
+                    "R0.DateTime=" + str(datetime_value),
+                method="GET"
+            )
+            if resp.reason == "OK":
+                return True
+        except Exception as e:
+            _LOGGER.error(f"Error setting datetime: {e}")
+        return False
 
     def _get_touchline_device_item(self, id):
         """Override to include R0 parameters."""
