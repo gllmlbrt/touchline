@@ -4,8 +4,6 @@ from __future__ import annotations
 import logging
 from typing import Any, NamedTuple
 
-from pytouchline import PyTouchline
-
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
@@ -18,7 +16,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import TouchlineDataUpdateCoordinator
+from . import TouchlineDataUpdateCoordinator, ExtendedPyTouchline
 from .const import (
     DOMAIN,
     OPERATION_MODE_AUTO,
@@ -97,7 +95,7 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
         )
 
     @property
-    def _device(self) -> PyTouchline:
+    def _device(self) -> ExtendedPyTouchline:
         """Return the underlying device object."""
         return self.coordinator.data[self._idx]
 
