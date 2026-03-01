@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Roth Touchline",
+        "data": {
+          "host": "Host"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Touchline controller. Check the host address and try again.",
+      "no_devices": "Connected to the controller but no thermostat zones were found."
+    },
+    "abort": {
+      "already_configured": "This Touchline controller is already configured."
+    }
+  }
+}
