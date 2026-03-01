@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, NamedTuple
 
 from pytouchline import PyTouchline
 
@@ -19,20 +19,35 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import TouchlineDataUpdateCoordinator
-from .const import DOMAIN, OPERATION_MODE_AUTO, OPERATION_MODE_FROST, OPERATION_MODE_MANUAL
+from .const import (
+    DOMAIN,
+    OPERATION_MODE_AUTO,
+    OPERATION_MODE_HOLIDAY,
+    OPERATION_MODE_MANUAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-HVAC_MODES = [HVACMode.AUTO, HVACMode.HEAT, HVACMode.OFF]
 
-HA_TO_TOUCHLINE_HVAC: dict[HVACMode, int] = {
-    HVACMode.AUTO: OPERATION_MODE_AUTO,
-    HVACMode.HEAT: OPERATION_MODE_MANUAL,
-    HVACMode.OFF: OPERATION_MODE_FROST,
+class PresetMode(NamedTuple):
+    """Settings for preset mode."""
+
+    mode: int
+    program: int
+
+
+PRESET_MODES = {
+    "Normal": PresetMode(mode=OPERATION_MODE_AUTO, program=0),
+    "Night": PresetMode(mode=OPERATION_MODE_MANUAL, program=0),
+    "Holiday": PresetMode(mode=OPERATION_MODE_HOLIDAY, program=0),
+    "Pro 1": PresetMode(mode=OPERATION_MODE_AUTO, program=1),
+    "Pro 2": PresetMode(mode=OPERATION_MODE_AUTO, program=2),
+    "Pro 3": PresetMode(mode=OPERATION_MODE_AUTO, program=3),
 }
 
-TOUCHLINE_TO_HA_HVAC: dict[int, HVACMode] = {
-    v: k for k, v in HA_TO_TOUCHLINE_HVAC.items()
+TOUCHLINE_TO_HA_PRESET: dict[tuple[int, int], str] = {
+    (settings.mode, settings.program): preset
+    for preset, settings in PRESET_MODES.items()
 }
 
 
@@ -55,8 +70,11 @@ async def async_setup_entry(
 class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], ClimateEntity):
     """Representation of a Roth Touchline thermostat zone."""
 
-    _attr_hvac_modes = HVAC_MODES
-    _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
+    _attr_hvac_modes = [HVACMode.HEAT]
+    _attr_preset_modes = list(PRESET_MODES.keys())
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
+    )
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
     def __init__(
@@ -114,16 +132,32 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current HVAC mode."""
+        return HVACMode.HEAT
+
+    @property
+    def preset_mode(self) -> str | None:
+        """Return the current preset mode."""
         op_mode = self._device.get_operation_mode()
-        if op_mode is None:
-            return HVACMode.AUTO
-        return TOUCHLINE_TO_HA_HVAC.get(op_mode, HVACMode.AUTO)
+        week_program = self._device.get_week_program()
+        if op_mode is None or week_program is None:
+            return "Normal"
+        return TOUCHLINE_TO_HA_PRESET.get((op_mode, week_program), "Normal")
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
-        op_mode = HA_TO_TOUCHLINE_HVAC[hvac_mode]
+        # Only HEAT mode is supported, so this is a no-op
+        pass
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set new preset mode."""
+        if preset_mode not in PRESET_MODES:
+            raise ValueError(f"Invalid preset mode: {preset_mode}")
+        preset = PRESET_MODES[preset_mode]
         await self.hass.async_add_executor_job(
-            self._device.set_operation_mode, op_mode
+            self._device.set_operation_mode, preset.mode
+        )
+        await self.hass.async_add_executor_job(
+            self._device.set_week_program, preset.program
         )
         await self.coordinator.async_request_refresh()
 
