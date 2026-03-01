@@ -85,16 +85,13 @@ class TestTouchlineControllerDateTimeSensor:
         assert sensor.unique_id == "192.168.1.100_controller_datetime"
 
     def test_native_value(self):
-        """Test that native_value returns the controller datetime as datetime object."""
-        # Unix timestamp 1709302958 = 2024-03-01 14:42:38 UTC
+        """Test that native_value returns the controller datetime as formatted string."""
+        # Unix timestamp 1709302958 = 2024-03-01 14:22:38 UTC
         coordinator = _make_coordinator(datetime_value="1709302958")
         sensor = TouchlineControllerDateTimeSensor(coordinator)
         result = sensor.native_value
-        assert isinstance(result, datetime)
-        assert result.timestamp() == 1709302958
-        # Verify the datetime is timezone-aware with UTC timezone
-        assert result.tzinfo is not None
-        assert result.tzinfo == timezone.utc
+        assert isinstance(result, str)
+        assert result == "2024-03-01 14:22:38 UTC"
 
     def test_native_value_none(self):
         """Test that native_value returns None when datetime is not available."""
@@ -124,12 +121,11 @@ class TestTouchlineControllerDateTimeSensor:
         sensor = TouchlineControllerDateTimeSensor(coordinator)
         assert sensor.entity_description.entity_category == EntityCategory.DIAGNOSTIC
 
-    def test_device_class_timestamp(self):
-        """Test that the sensor uses TIMESTAMP device class."""
-        from homeassistant.components.sensor import SensorDeviceClass
+    def test_device_class_removed(self):
+        """Test that the sensor no longer uses TIMESTAMP device class."""
         coordinator = _make_coordinator()
         sensor = TouchlineControllerDateTimeSensor(coordinator)
-        assert sensor.entity_description.device_class == SensorDeviceClass.TIMESTAMP
+        assert sensor.entity_description.device_class is None
 
 
 class TestTouchlineControllerErrorCodeSensor:
