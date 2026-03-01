@@ -23,6 +23,7 @@ from .const import (
     DOMAIN,
     OPERATION_MODE_AUTO,
     OPERATION_MODE_FROST,
+    OPERATION_MODE_HOLIDAY,
     OPERATION_MODE_MANUAL,
 )
 
@@ -39,7 +40,6 @@ class PresetMode(NamedTuple):
 PRESET_MODES = {
     "Normal": PresetMode(mode=OPERATION_MODE_AUTO, program=0),
     "Night": PresetMode(mode=OPERATION_MODE_MANUAL, program=0),
-    "Off": PresetMode(mode=OPERATION_MODE_FROST, program=0),
     "Pro 1": PresetMode(mode=OPERATION_MODE_AUTO, program=1),
     "Pro 2": PresetMode(mode=OPERATION_MODE_AUTO, program=2),
     "Pro 3": PresetMode(mode=OPERATION_MODE_AUTO, program=3),
@@ -70,7 +70,7 @@ async def async_setup_entry(
 class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], ClimateEntity):
     """Representation of a Roth Touchline thermostat zone."""
 
-    _attr_hvac_modes = [HVACMode.HEAT]
+    _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
     _attr_preset_modes = list(PRESET_MODES.keys())
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.PRESET_MODE
@@ -135,6 +135,9 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current HVAC mode."""
+        op_mode = self._device.get_operation_mode()
+        if op_mode == OPERATION_MODE_HOLIDAY:
+            return HVACMode.OFF
         return HVACMode.HEAT
 
     @property
@@ -148,8 +151,20 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set new HVAC mode."""
-        # Only HEAT mode is supported, so this is a no-op
-        pass
+        if hvac_mode == HVACMode.OFF:
+            # Set to Holiday mode to turn off
+            await self.hass.async_add_executor_job(
+                self._device.set_operation_mode, OPERATION_MODE_HOLIDAY
+            )
+        elif hvac_mode == HVACMode.HEAT:
+            # Set to Normal preset (AUTO mode, program 0)
+            await self.hass.async_add_executor_job(
+                self._device.set_operation_mode, OPERATION_MODE_AUTO
+            )
+            await self.hass.async_add_executor_job(
+                self._device.set_week_program, 0
+            )
+        await self.coordinator.async_request_refresh()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set new preset mode."""

@@ -13,6 +13,7 @@ from custom_components.touchline.climate import (
 from custom_components.touchline.const import (
     OPERATION_MODE_AUTO,
     OPERATION_MODE_FROST,
+    OPERATION_MODE_HOLIDAY,
     OPERATION_MODE_MANUAL,
 )
 
@@ -53,11 +54,10 @@ class TestPresetModeMappings:
     """Verify preset mode mapping tables are consistent."""
 
     def test_preset_modes_count(self):
-        """Test that all 6 preset modes are defined."""
-        assert len(PRESET_MODES) == 6
+        """Test that all 5 preset modes are defined."""
+        assert len(PRESET_MODES) == 5
         assert "Normal" in PRESET_MODES
         assert "Night" in PRESET_MODES
-        assert "Off" in PRESET_MODES
         assert "Pro 1" in PRESET_MODES
         assert "Pro 2" in PRESET_MODES
         assert "Pro 3" in PRESET_MODES
@@ -75,8 +75,6 @@ class TestPresetModeMappings:
         assert PRESET_MODES["Normal"].program == 0
         assert PRESET_MODES["Night"].mode == OPERATION_MODE_MANUAL
         assert PRESET_MODES["Night"].program == 0
-        assert PRESET_MODES["Off"].mode == OPERATION_MODE_FROST
-        assert PRESET_MODES["Off"].program == 0
         assert PRESET_MODES["Pro 1"].mode == OPERATION_MODE_AUTO
         assert PRESET_MODES["Pro 1"].program == 1
         assert PRESET_MODES["Pro 2"].mode == OPERATION_MODE_AUTO
@@ -98,17 +96,23 @@ class TestTouchlineClimateProperties:
         entity = _make_entity(_make_coordinator([dev]))
         assert entity.target_temperature == 23.5
 
-    def test_hvac_mode_always_heat(self):
-        """Test that HVAC mode is always HEAT."""
+    def test_hvac_mode_heat(self):
+        """Test that HVAC mode is HEAT when not in holiday mode."""
         dev = _make_device(op_mode=OPERATION_MODE_AUTO)
         entity = _make_entity(_make_coordinator([dev]))
         assert entity.hvac_mode == HVACMode.HEAT
 
+    def test_hvac_mode_off(self):
+        """Test that HVAC mode is OFF when in holiday mode."""
+        dev = _make_device(op_mode=OPERATION_MODE_HOLIDAY)
+        entity = _make_entity(_make_coordinator([dev]))
+        assert entity.hvac_mode == HVACMode.OFF
+
     def test_hvac_modes_list(self):
-        """Test that only HEAT mode is in the list of supported modes."""
+        """Test that HEAT and OFF modes are in the list of supported modes."""
         dev = _make_device()
         entity = _make_entity(_make_coordinator([dev]))
-        assert entity.hvac_modes == [HVACMode.HEAT]
+        assert entity.hvac_modes == [HVACMode.HEAT, HVACMode.OFF]
 
     def test_preset_mode_normal(self):
         """Test Normal preset (AUTO mode, program 0)."""
@@ -121,12 +125,6 @@ class TestTouchlineClimateProperties:
         dev = _make_device(op_mode=OPERATION_MODE_MANUAL, week_program=0)
         entity = _make_entity(_make_coordinator([dev]))
         assert entity.preset_mode == "Night"
-
-    def test_preset_mode_off(self):
-        """Test Off preset (FROST mode, program 0)."""
-        dev = _make_device(op_mode=OPERATION_MODE_FROST, week_program=0)
-        entity = _make_entity(_make_coordinator([dev]))
-        assert entity.preset_mode == "Off"
 
     def test_preset_mode_pro1(self):
         """Test Pro 1 preset (AUTO mode, program 1)."""
@@ -227,15 +225,36 @@ class TestTouchlineClimateActions:
 
     @pytest.mark.asyncio
     async def test_set_hvac_mode_heat(self):
-        """Test setting HVAC mode to HEAT (should be no-op)."""
+        """Test setting HVAC mode to HEAT."""
         dev = _make_device()
         coordinator = _make_coordinator([dev])
         entity = _make_entity(coordinator)
 
         await entity.async_set_hvac_mode(HVACMode.HEAT)
 
-        # Should not call any device methods since HEAT is the only mode
-        entity.hass.async_add_executor_job.assert_not_awaited()
+        # Should set mode to AUTO (0) and program to 0 (Normal preset)
+        calls = entity.hass.async_add_executor_job.await_args_list
+        assert len(calls) == 2
+        assert calls[0][0][0] == dev.set_operation_mode
+        assert calls[0][0][1] == OPERATION_MODE_AUTO
+        assert calls[1][0][0] == dev.set_week_program
+        assert calls[1][0][1] == 0
+        coordinator.async_request_refresh.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_set_hvac_mode_off(self):
+        """Test setting HVAC mode to OFF."""
+        dev = _make_device()
+        coordinator = _make_coordinator([dev])
+        entity = _make_entity(coordinator)
+
+        await entity.async_set_hvac_mode(HVACMode.OFF)
+
+        # Should set mode to HOLIDAY (2)
+        entity.hass.async_add_executor_job.assert_awaited_once_with(
+            dev.set_operation_mode, OPERATION_MODE_HOLIDAY
+        )
+        coordinator.async_request_refresh.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_set_preset_mode_normal(self):
@@ -269,23 +288,6 @@ class TestTouchlineClimateActions:
         assert len(calls) == 2
         assert calls[0][0][0] == dev.set_operation_mode
         assert calls[0][0][1] == OPERATION_MODE_MANUAL
-        assert calls[1][0][0] == dev.set_week_program
-        assert calls[1][0][1] == 0
-
-    @pytest.mark.asyncio
-    async def test_set_preset_mode_off(self):
-        """Test setting preset to Off."""
-        dev = _make_device()
-        coordinator = _make_coordinator([dev])
-        entity = _make_entity(coordinator)
-
-        await entity.async_set_preset_mode("Off")
-
-        # Should set mode to FROST (3) and program to 0
-        calls = entity.hass.async_add_executor_job.await_args_list
-        assert len(calls) == 2
-        assert calls[0][0][0] == dev.set_operation_mode
-        assert calls[0][0][1] == OPERATION_MODE_FROST
         assert calls[1][0][0] == dev.set_week_program
         assert calls[1][0][1] == 0
 
