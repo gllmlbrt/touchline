@@ -65,8 +65,7 @@ class TouchlineConfigFlow(ConfigFlow, domain=DOMAIN):
         return touchline.get_number_of_devices(f"http://{host}")
 
     @staticmethod
-    @callback
-    def async_get_options_flow(config_entry) -> TouchlineOptionsFlow:
+    def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
         return TouchlineOptionsFlow(config_entry)
 
