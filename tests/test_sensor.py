@@ -7,6 +7,9 @@ from custom_components.touchline.sensor import (
     TouchlineControllerStatusSensor,
     TouchlineControllerDateTimeSensor,
     TouchlineControllerErrorCodeSensor,
+    TouchlineControllerHwIpSensor,
+    TouchlineControllerHwMacSensor,
+    TouchlineControllerHwHostnameSensor,
 )
 
 
@@ -17,6 +20,9 @@ def _make_coordinator(
     owner_kurz_id="12345",
     datetime_value="1709302958",
     error_code="0",
+    hw_ip="192.168.1.100",
+    hw_mac="AA:BB:CC:DD:EE:FF",
+    hw_hostname="touchline",
 ):
     coordinator = MagicMock()
     coordinator.host = host
@@ -25,6 +31,9 @@ def _make_coordinator(
     coordinator.owner_kurz_id = owner_kurz_id
     coordinator.datetime = datetime_value
     coordinator.error_code = error_code
+    coordinator.hw_ip = hw_ip
+    coordinator.hw_mac = hw_mac
+    coordinator.hw_hostname = hw_hostname
     coordinator.data = []
     return coordinator
 
@@ -173,4 +182,118 @@ class TestTouchlineControllerErrorCodeSensor:
         from homeassistant.helpers.entity import EntityCategory
         coordinator = _make_coordinator()
         sensor = TouchlineControllerErrorCodeSensor(coordinator)
+        assert sensor.entity_description.entity_category == EntityCategory.DIAGNOSTIC
+
+
+class TestTouchlineControllerHwIpSensor:
+    """Tests for the TouchlineControllerHwIpSensor entity."""
+
+    def test_unique_id(self):
+        """Test that unique_id is set based on host."""
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwIpSensor(coordinator)
+        assert sensor.unique_id == "192.168.1.100_controller_hw_ip"
+
+    def test_native_value(self):
+        """Test that native_value returns the controller IP address."""
+        coordinator = _make_coordinator(hw_ip="10.0.0.1")
+        sensor = TouchlineControllerHwIpSensor(coordinator)
+        assert sensor.native_value == "10.0.0.1"
+
+    def test_native_value_none(self):
+        """Test that native_value returns None when IP is not available."""
+        coordinator = _make_coordinator(hw_ip=None)
+        sensor = TouchlineControllerHwIpSensor(coordinator)
+        assert sensor.native_value is None
+
+    def test_device_info(self):
+        """Test that device_info identifies the controller device."""
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwIpSensor(coordinator)
+        assert sensor.device_info is not None
+        assert ("touchline", "192.168.1.100_controller") in sensor.device_info["identifiers"]
+        assert sensor.device_info["manufacturer"] == "Roth"
+        assert sensor.device_info["model"] == "Touchline Controller"
+
+    def test_entity_category_diagnostic(self):
+        """Test that the sensor is categorized as diagnostic."""
+        from homeassistant.helpers.entity import EntityCategory
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwIpSensor(coordinator)
+        assert sensor.entity_description.entity_category == EntityCategory.DIAGNOSTIC
+
+
+class TestTouchlineControllerHwMacSensor:
+    """Tests for the TouchlineControllerHwMacSensor entity."""
+
+    def test_unique_id(self):
+        """Test that unique_id is set based on host."""
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwMacSensor(coordinator)
+        assert sensor.unique_id == "192.168.1.100_controller_hw_mac"
+
+    def test_native_value(self):
+        """Test that native_value returns the controller MAC address."""
+        coordinator = _make_coordinator(hw_mac="AA:BB:CC:DD:EE:FF")
+        sensor = TouchlineControllerHwMacSensor(coordinator)
+        assert sensor.native_value == "AA:BB:CC:DD:EE:FF"
+
+    def test_native_value_none(self):
+        """Test that native_value returns None when MAC is not available."""
+        coordinator = _make_coordinator(hw_mac=None)
+        sensor = TouchlineControllerHwMacSensor(coordinator)
+        assert sensor.native_value is None
+
+    def test_device_info(self):
+        """Test that device_info identifies the controller device."""
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwMacSensor(coordinator)
+        assert sensor.device_info is not None
+        assert ("touchline", "192.168.1.100_controller") in sensor.device_info["identifiers"]
+        assert sensor.device_info["manufacturer"] == "Roth"
+        assert sensor.device_info["model"] == "Touchline Controller"
+
+    def test_entity_category_diagnostic(self):
+        """Test that the sensor is categorized as diagnostic."""
+        from homeassistant.helpers.entity import EntityCategory
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwMacSensor(coordinator)
+        assert sensor.entity_description.entity_category == EntityCategory.DIAGNOSTIC
+
+
+class TestTouchlineControllerHwHostnameSensor:
+    """Tests for the TouchlineControllerHwHostnameSensor entity."""
+
+    def test_unique_id(self):
+        """Test that unique_id is set based on host."""
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwHostnameSensor(coordinator)
+        assert sensor.unique_id == "192.168.1.100_controller_hw_hostname"
+
+    def test_native_value(self):
+        """Test that native_value returns the controller hostname."""
+        coordinator = _make_coordinator(hw_hostname="touchline-ctrl")
+        sensor = TouchlineControllerHwHostnameSensor(coordinator)
+        assert sensor.native_value == "touchline-ctrl"
+
+    def test_native_value_none(self):
+        """Test that native_value returns None when hostname is not available."""
+        coordinator = _make_coordinator(hw_hostname=None)
+        sensor = TouchlineControllerHwHostnameSensor(coordinator)
+        assert sensor.native_value is None
+
+    def test_device_info(self):
+        """Test that device_info identifies the controller device."""
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwHostnameSensor(coordinator)
+        assert sensor.device_info is not None
+        assert ("touchline", "192.168.1.100_controller") in sensor.device_info["identifiers"]
+        assert sensor.device_info["manufacturer"] == "Roth"
+        assert sensor.device_info["model"] == "Touchline Controller"
+
+    def test_entity_category_diagnostic(self):
+        """Test that the sensor is categorized as diagnostic."""
+        from homeassistant.helpers.entity import EntityCategory
+        coordinator = _make_coordinator()
+        sensor = TouchlineControllerHwHostnameSensor(coordinator)
         assert sensor.entity_description.entity_category == EntityCategory.DIAGNOSTIC
