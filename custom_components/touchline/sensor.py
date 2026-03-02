@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo, CONNECTION_NETWORK_MAC
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -33,6 +33,55 @@ CONTROLLER_ERROR_CODE_DESCRIPTION = SensorEntityDescription(
     entity_category=EntityCategory.DIAGNOSTIC,
 )
 
+CONTROLLER_HW_IP_DESCRIPTION = SensorEntityDescription(
+    key="controller_hw_ip",
+    name="Controller IP Address",
+    icon="mdi:ip-network",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_HW_MAC_DESCRIPTION = SensorEntityDescription(
+    key="controller_hw_mac",
+    name="Controller MAC Address",
+    icon="mdi:network-outline",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_HW_HOSTNAME_DESCRIPTION = SensorEntityDescription(
+    key="controller_hw_hostname",
+    name="Controller Hostname",
+    icon="mdi:dns",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_FW_STELL_APP_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stell_app",
+    name="Firmware Version (Actuator App)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_FW_STELL_BL_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stell_bl",
+    name="Firmware Version (Actuator Bootloader)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_FW_STM_APP_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stm_app",
+    name="Firmware Version (STM App)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_FW_STM_BL_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stm_bl",
+    name="Firmware Version (STM Bootloader)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -46,6 +95,13 @@ async def async_setup_entry(
         TouchlineControllerStatusSensor(coordinator),
         TouchlineControllerDateTimeSensor(coordinator),
         TouchlineControllerErrorCodeSensor(coordinator),
+        TouchlineControllerHwIpSensor(coordinator),
+        TouchlineControllerHwMacSensor(coordinator),
+        TouchlineControllerHwHostnameSensor(coordinator),
+        TouchlineControllerFwStellAppSensor(coordinator),
+        TouchlineControllerFwStellBlSensor(coordinator),
+        TouchlineControllerFwStmAppSensor(coordinator),
+        TouchlineControllerFwStmBlSensor(coordinator),
     ])
 
 
@@ -68,9 +124,14 @@ class TouchlineControllerStatusSensor(
         )
 
     def _update_device_info(self) -> None:
-        """Update device info with ownerKurzID once available."""
+        """Update device info with ownerKurzID and MAC address once available."""
         if self.coordinator.owner_kurz_id and self._attr_device_info:
             self._attr_device_info["serial_number"] = self.coordinator.owner_kurz_id
+        if self.coordinator.hw_mac and self._attr_device_info:
+            conn = (CONNECTION_NETWORK_MAC, self.coordinator.hw_mac)
+            existing = self._attr_device_info.get("connections") or set()
+            if conn not in existing:
+                self._attr_device_info["connections"] = existing | {conn}
 
     @property
     def native_value(self) -> str | None:
@@ -137,3 +198,171 @@ class TouchlineControllerErrorCodeSensor(
     def native_value(self) -> str | None:
         """Return the controller error code."""
         return self.coordinator.error_code
+
+
+class TouchlineControllerHwIpSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller IP address."""
+
+    entity_description = CONTROLLER_HW_IP_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the controller IP address sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_hw_ip"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the controller IP address."""
+        return self.coordinator.hw_ip
+
+
+class TouchlineControllerHwMacSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller MAC address."""
+
+    entity_description = CONTROLLER_HW_MAC_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the controller MAC address sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_hw_mac"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the controller MAC address."""
+        return self.coordinator.hw_mac
+
+
+class TouchlineControllerHwHostnameSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller hostname."""
+
+    entity_description = CONTROLLER_HW_HOSTNAME_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the controller hostname sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_hw_hostname"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the controller hostname."""
+        return self.coordinator.hw_hostname
+
+
+class TouchlineControllerFwStellAppSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller actuator app firmware version."""
+
+    entity_description = CONTROLLER_FW_STELL_APP_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the actuator app firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stell_app"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the actuator app firmware version."""
+        return self.coordinator.fw_stell_app
+
+
+class TouchlineControllerFwStellBlSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller actuator bootloader firmware version."""
+
+    entity_description = CONTROLLER_FW_STELL_BL_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the actuator bootloader firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stell_bl"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the actuator bootloader firmware version."""
+        return self.coordinator.fw_stell_bl
+
+
+class TouchlineControllerFwStmAppSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller STM app firmware version."""
+
+    entity_description = CONTROLLER_FW_STM_APP_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the STM app firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stm_app"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the STM app firmware version."""
+        return self.coordinator.fw_stm_app
+
+
+class TouchlineControllerFwStmBlSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller STM bootloader firmware version."""
+
+    entity_description = CONTROLLER_FW_STM_BL_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the STM bootloader firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stm_bl"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the STM bootloader firmware version."""
+        return self.coordinator.fw_stm_bl

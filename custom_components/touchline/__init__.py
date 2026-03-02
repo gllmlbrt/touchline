@@ -77,6 +77,45 @@ class ExtendedPyTouchline(PyTouchline):
             _LOGGER.error(f"Error setting datetime: {e}")
         return False
 
+    def get_firmware_info(self):
+        """Get STELL-APP, STELL-BL, STM-APP, STM-BL firmware versions."""
+        fw_items = [
+            "<i><n>STELL-APP</n></i>",
+            "<i><n>STELL-BL</n></i>",
+            "<i><n>STM-APP</n></i>",
+            "<i><n>STM-BL</n></i>",
+        ]
+        request = self._get_touchline_request(fw_items)
+        response = self._request_and_receive_xml(request)
+        result = {}
+        item_list = response.find("item_list")
+        if item_list is not None:
+            for item in item_list.findall("i"):
+                name_el = item.find("n")
+                value_el = item.find("v")
+                if name_el is not None and value_el is not None:
+                    result[name_el.text] = value_el.text
+        return result
+
+    def get_network_info(self):
+        """Get hw.IP, hw.Addr, hw.HostName from the controller."""
+        hw_items = [
+            "<i><n>hw.IP</n></i>",
+            "<i><n>hw.Addr</n></i>",
+            "<i><n>hw.HostName</n></i>",
+        ]
+        request = self._get_touchline_request(hw_items)
+        response = self._request_and_receive_xml(request)
+        result = {}
+        item_list = response.find("item_list")
+        if item_list is not None:
+            for item in item_list.findall("i"):
+                name_el = item.find("n")
+                value_el = item.find("v")
+                if name_el is not None and value_el is not None:
+                    result[name_el.text] = value_el.text
+        return result
+
     def _get_touchline_device_item(self, id):
         """Override to include R0 parameters."""
         items = []
@@ -134,6 +173,15 @@ class TouchlineDataUpdateCoordinator(DataUpdateCoordinator):
         self.owner_kurz_id: str | None = None
         self.datetime: str | None = None
         self.error_code: str | None = None
+        self.hw_ip: str | None = None
+        self.hw_mac: str | None = None
+        self.hw_hostname: str | None = None
+        self._hw_info_loaded: bool = False
+        self.fw_stell_app: str | None = None
+        self.fw_stell_bl: str | None = None
+        self.fw_stm_app: str | None = None
+        self.fw_stm_bl: str | None = None
+        self._fw_info_loaded: bool = False
 
     async def _async_update_data(self) -> list[ExtendedPyTouchline]:
         """Fetch data from Touchline controller."""
@@ -169,5 +217,26 @@ class TouchlineDataUpdateCoordinator(DataUpdateCoordinator):
             # Get datetime and error_code
             self.datetime = self.devices[0].get_datetime()
             self.error_code = self.devices[0].get_error_code()
+
+        if not self._hw_info_loaded and self.devices:
+            try:
+                hw_info = self.devices[0].get_network_info()
+                self.hw_ip = hw_info.get("hw.IP")
+                self.hw_mac = hw_info.get("hw.Addr")
+                self.hw_hostname = hw_info.get("hw.HostName")
+                self._hw_info_loaded = True
+            except Exception:
+                _LOGGER.warning("Could not fetch hw network info", exc_info=True)
+
+        if not self._fw_info_loaded and self.devices:
+            try:
+                fw_info = self.devices[0].get_firmware_info()
+                self.fw_stell_app = fw_info.get("STELL-APP")
+                self.fw_stell_bl = fw_info.get("STELL-BL")
+                self.fw_stm_app = fw_info.get("STM-APP")
+                self.fw_stm_bl = fw_info.get("STM-BL")
+                self._fw_info_loaded = True
+            except Exception:
+                _LOGGER.warning("Could not fetch firmware info", exc_info=True)
 
         return self.devices
