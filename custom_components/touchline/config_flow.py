@@ -73,10 +73,6 @@ class TouchlineConfigFlow(ConfigFlow, domain=DOMAIN):
 class TouchlineOptionsFlow(OptionsFlow):
     """Handle options flow for Roth Touchline."""
 
-    def __init__(self, config_entry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:

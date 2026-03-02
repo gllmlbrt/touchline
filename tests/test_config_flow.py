@@ -101,7 +101,8 @@ async def test_options_flow_init_default():
     config_entry = MagicMock()
     config_entry.options = {}
 
-    flow = TouchlineOptionsFlow(config_entry)
+    flow = TouchlineOptionsFlow()
+    flow._config_entry = config_entry
     flow.async_show_form = lambda step_id, data_schema: {
         "step_id": step_id,
         "data_schema": data_schema,
@@ -120,7 +121,8 @@ async def test_options_flow_init_with_user_input():
     config_entry = MagicMock()
     config_entry.options = {}
 
-    flow = TouchlineOptionsFlow(config_entry)
+    flow = TouchlineOptionsFlow()
+    flow._config_entry = config_entry
     flow.async_create_entry = lambda title, data: {"title": title, "data": data}
 
     result = await flow.async_step_init({CONF_VIRTUAL_HEAT_MODE: True})
@@ -134,7 +136,8 @@ async def test_options_flow_init_preserves_existing_options():
     config_entry = MagicMock()
     config_entry.options = {CONF_VIRTUAL_HEAT_MODE: True}
 
-    flow = TouchlineOptionsFlow(config_entry)
+    flow = TouchlineOptionsFlow()
+    flow._config_entry = config_entry
 
     # Mock the show form method and capture the schema
     captured_schema = None
