@@ -7,10 +7,11 @@ from typing import Any
 import voluptuous as vol
 from pytouchline import PyTouchline
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.const import CONF_HOST
+from homeassistant.core import callback
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_VIRTUAL_HEAT_MODE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,3 +63,37 @@ class TouchlineConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return number of devices from the controller."""
         touchline = PyTouchline()
         return touchline.get_number_of_devices(f"http://{host}")
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry) -> TouchlineOptionsFlow:
+        """Get the options flow for this handler."""
+        return TouchlineOptionsFlow(config_entry)
+
+
+class TouchlineOptionsFlow(OptionsFlow):
+    """Handle options flow for Roth Touchline."""
+
+    def __init__(self, config_entry) -> None:
+        """Initialize options flow."""
+        self.config_entry = config_entry
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_VIRTUAL_HEAT_MODE,
+                        default=self.config_entry.options.get(CONF_VIRTUAL_HEAT_MODE, False),
+                    ): bool,
+                }
+            ),
+        )
+
