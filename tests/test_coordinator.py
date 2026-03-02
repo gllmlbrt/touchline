@@ -25,6 +25,11 @@ class TestTouchlineDataUpdateCoordinator:
         coordinator.hw_mac = None
         coordinator.hw_hostname = None
         coordinator._hw_info_loaded = False
+        coordinator.fw_stell_app = None
+        coordinator.fw_stell_bl = None
+        coordinator.fw_stm_app = None
+        coordinator.fw_stm_bl = None
+        coordinator._fw_info_loaded = False
         return coordinator
 
     def test_fetch_data_sets_controller_id_and_status(self):
@@ -42,6 +47,12 @@ class TestTouchlineDataUpdateCoordinator:
             "hw.Addr": "AA:BB:CC:DD:EE:FF",
             "hw.HostName": "touchline",
         }
+        mock_device.get_firmware_info.return_value = {
+            "STELL-APP": "1.0.0",
+            "STELL-BL": "1.0.0",
+            "STM-APP": "2.0.0",
+            "STM-BL": "2.0.0",
+        }
         coordinator.devices = [mock_device]
 
         with patch("custom_components.touchline.ExtendedPyTouchline"):
@@ -56,6 +67,11 @@ class TestTouchlineDataUpdateCoordinator:
         assert coordinator.hw_mac == "AA:BB:CC:DD:EE:FF"
         assert coordinator.hw_hostname == "touchline"
         assert coordinator._hw_info_loaded is True
+        assert coordinator.fw_stell_app == "1.0.0"
+        assert coordinator.fw_stell_bl == "1.0.0"
+        assert coordinator.fw_stm_app == "2.0.0"
+        assert coordinator.fw_stm_bl == "2.0.0"
+        assert coordinator._fw_info_loaded is True
 
     def test_fetch_data_no_devices_skips_controller_info(self):
         """Test that _fetch_data with no devices leaves controller info unchanged."""
@@ -82,3 +98,7 @@ class TestTouchlineDataUpdateCoordinator:
         assert coordinator.hw_ip is None
         assert coordinator.hw_mac is None
         assert coordinator.hw_hostname is None
+        assert coordinator.fw_stell_app is None
+        assert coordinator.fw_stell_bl is None
+        assert coordinator.fw_stm_app is None
+        assert coordinator.fw_stm_bl is None

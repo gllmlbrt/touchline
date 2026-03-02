@@ -54,6 +54,34 @@ CONTROLLER_HW_HOSTNAME_DESCRIPTION = SensorEntityDescription(
     entity_category=EntityCategory.DIAGNOSTIC,
 )
 
+CONTROLLER_FW_STELL_APP_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stell_app",
+    name="Firmware Version (Actuator App)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_FW_STELL_BL_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stell_bl",
+    name="Firmware Version (Actuator Bootloader)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_FW_STM_APP_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stm_app",
+    name="Firmware Version (STM App)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
+CONTROLLER_FW_STM_BL_DESCRIPTION = SensorEntityDescription(
+    key="controller_fw_stm_bl",
+    name="Firmware Version (STM Bootloader)",
+    icon="mdi:chip",
+    entity_category=EntityCategory.DIAGNOSTIC,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -70,6 +98,10 @@ async def async_setup_entry(
         TouchlineControllerHwIpSensor(coordinator),
         TouchlineControllerHwMacSensor(coordinator),
         TouchlineControllerHwHostnameSensor(coordinator),
+        TouchlineControllerFwStellAppSensor(coordinator),
+        TouchlineControllerFwStellBlSensor(coordinator),
+        TouchlineControllerFwStmAppSensor(coordinator),
+        TouchlineControllerFwStmBlSensor(coordinator),
     ])
 
 
@@ -96,8 +128,10 @@ class TouchlineControllerStatusSensor(
         if self.coordinator.owner_kurz_id and self._attr_device_info:
             self._attr_device_info["serial_number"] = self.coordinator.owner_kurz_id
         if self.coordinator.hw_mac and self._attr_device_info:
+            conn = (CONNECTION_NETWORK_MAC, self.coordinator.hw_mac)
             existing = self._attr_device_info.get("connections") or set()
-            self._attr_device_info["connections"] = existing | {(CONNECTION_NETWORK_MAC, self.coordinator.hw_mac)}
+            if conn not in existing:
+                self._attr_device_info["connections"] = existing | {conn}
 
     @property
     def native_value(self) -> str | None:
@@ -236,3 +270,99 @@ class TouchlineControllerHwHostnameSensor(
     def native_value(self) -> str | None:
         """Return the controller hostname."""
         return self.coordinator.hw_hostname
+
+
+class TouchlineControllerFwStellAppSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller actuator app firmware version."""
+
+    entity_description = CONTROLLER_FW_STELL_APP_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the actuator app firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stell_app"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the actuator app firmware version."""
+        return self.coordinator.fw_stell_app
+
+
+class TouchlineControllerFwStellBlSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller actuator bootloader firmware version."""
+
+    entity_description = CONTROLLER_FW_STELL_BL_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the actuator bootloader firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stell_bl"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the actuator bootloader firmware version."""
+        return self.coordinator.fw_stell_bl
+
+
+class TouchlineControllerFwStmAppSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller STM app firmware version."""
+
+    entity_description = CONTROLLER_FW_STM_APP_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the STM app firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stm_app"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the STM app firmware version."""
+        return self.coordinator.fw_stm_app
+
+
+class TouchlineControllerFwStmBlSensor(
+    CoordinatorEntity[TouchlineDataUpdateCoordinator], SensorEntity
+):
+    """Sensor representing the Touchline controller STM bootloader firmware version."""
+
+    entity_description = CONTROLLER_FW_STM_BL_DESCRIPTION
+
+    def __init__(self, coordinator: TouchlineDataUpdateCoordinator) -> None:
+        """Initialize the STM bootloader firmware version sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.host}_controller_fw_stm_bl"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{coordinator.host}_controller")},
+            manufacturer="Roth",
+            model="Touchline Controller",
+            name="Touchline Controller",
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the STM bootloader firmware version."""
+        return self.coordinator.fw_stm_bl
