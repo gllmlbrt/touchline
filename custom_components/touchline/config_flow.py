@@ -67,7 +67,7 @@ class TouchlineConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return TouchlineOptionsFlow(config_entry)
+        return TouchlineOptionsFlow()
 
 
 class TouchlineOptionsFlow(OptionsFlow):
