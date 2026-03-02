@@ -12,5 +12,5 @@ OPERATION_MODE_HOLIDAY = 2
 OPERATION_MODE_FROST = 3
 
 # Virtual heat mode thresholds
-HEAT_MODE_THRESHOLD = 0.1  # Temperature difference threshold in °C
+HEAT_MODE_THRESHOLD = 0.3  # Temperature difference threshold in °C
 HEAT_MODE_DELAY = 300  # Delay in seconds (5 minutes) before switching to idle

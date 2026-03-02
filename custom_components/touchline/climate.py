@@ -174,8 +174,8 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
         temp_diff = target_temp - current_temp
 
         # Logic as per requirements:
-        # - When temp drops 0.1 below target -> immediately heating
-        # - When temp rises 0.1 above target -> after 5 min delay, idle
+        # - When temp drops 0.3 below target -> immediately heating
+        # - When temp rises 0.3 above target -> after 5 min delay, idle
 
         if temp_diff >= HEAT_MODE_THRESHOLD:
             # Temperature is below target (needs heating)
@@ -202,7 +202,7 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
                 # Already idle
                 return HVACAction.IDLE
         else:
-            # Within hysteresis band (between -0.1 and +0.1)
+            # Within hysteresis band (between -0.3 and +0.3)
             # Maintain current state
             if self._is_heating:
                 return HVACAction.HEATING
