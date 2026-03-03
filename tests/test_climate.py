@@ -1,9 +1,11 @@
 """Tests for the Roth Touchline climate platform."""
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from homeassistant.components.climate import HVACMode
+from homeassistant.components.climate import HVACAction, HVACMode
+from homeassistant.util import dt as dt_util
 
 from custom_components.touchline.climate import (
     PRESET_MODES,
@@ -11,6 +13,9 @@ from custom_components.touchline.climate import (
     TouchlineClimate,
 )
 from custom_components.touchline.const import (
+    HEAT_MODE_DELAY,
+    HEAT_MODE_HEATING_THRESHOLD,
+    HEAT_MODE_IDLE_THRESHOLD,
     OPERATION_MODE_AUTO,
     OPERATION_MODE_FROST,
     OPERATION_MODE_HOLIDAY,
@@ -43,8 +48,8 @@ def _make_coordinator(devices):
     return coordinator
 
 
-def _make_entity(coordinator, idx=0):
-    entity = TouchlineClimate(coordinator, idx)
+def _make_entity(coordinator, idx=0, virtual_heat_mode=False):
+    entity = TouchlineClimate(coordinator, idx, virtual_heat_mode)
     entity.hass = MagicMock()
     entity.hass.async_add_executor_job = AsyncMock(return_value=None)
     return entity
@@ -345,3 +350,108 @@ class TestTouchlineClimateActions:
 
         with pytest.raises(ValueError):
             await entity.async_set_preset_mode("InvalidPreset")
+
+
+class TestVirtualHeatMode:
+    """Test virtual heat mode functionality."""
+
+    def test_hvac_action_disabled_when_off(self):
+        """Test that HVAC action is OFF when in OFF mode."""
+        dev = _make_device(op_mode=OPERATION_MODE_HOLIDAY)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        assert entity.hvac_action == HVACAction.OFF
+
+    def test_hvac_action_none_when_disabled(self):
+        """Test that HVAC action is None when virtual heat mode is disabled."""
+        dev = _make_device(current_temp=21.5, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=False)
+        assert entity.hvac_action is None
+
+    def test_hvac_action_heating_when_temp_below_threshold(self):
+        """Test HVAC action is HEATING when temp is 0.2+ below target."""
+        dev = _make_device(current_temp=21.0, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        # Temperature difference is 1.0, which is >= HEAT_MODE_HEATING_THRESHOLD (0.2)
+        assert entity.hvac_action == HVACAction.HEATING
+
+    def test_hvac_action_heating_exactly_at_threshold(self):
+        """Test HVAC action is HEATING when temp is at or below heating threshold."""
+        dev = _make_device(current_temp=21.75, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        # Temperature difference is 0.25, which is >= HEAT_MODE_HEATING_THRESHOLD (0.2)
+        assert entity.hvac_action == HVACAction.HEATING
+
+    def test_hvac_action_idle_when_temp_above_threshold_and_not_heating(self):
+        """Test HVAC action is IDLE when temp is above target and not heating."""
+        dev = _make_device(current_temp=22.5, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        entity._is_heating = False
+        # Temperature difference is -0.5, which is <= -HEAT_MODE_IDLE_THRESHOLD (-0.3)
+        assert entity.hvac_action == HVACAction.IDLE
+
+    def test_hvac_action_remains_heating_during_delay(self):
+        """Test HVAC action remains HEATING during the 5-minute delay."""
+        dev = _make_device(current_temp=22.5, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        entity._is_heating = True
+        entity._last_heating_time = dt_util.utcnow() - timedelta(seconds=60)  # 1 minute ago
+
+        # Temperature is above target but delay hasn't passed
+        assert entity.hvac_action == HVACAction.HEATING
+
+    def test_hvac_action_idle_after_delay(self):
+        """Test HVAC action becomes IDLE after 5-minute delay."""
+        dev = _make_device(current_temp=22.5, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        entity._is_heating = True
+        entity._last_heating_time = dt_util.utcnow() - timedelta(seconds=HEAT_MODE_DELAY + 1)
+
+        # Temperature is above target and delay has passed
+        assert entity.hvac_action == HVACAction.IDLE
+
+    def test_hvac_action_within_hysteresis_maintains_heating(self):
+        """Test HVAC action maintains HEATING when within hysteresis band."""
+        dev = _make_device(current_temp=21.9, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        entity._is_heating = True
+        # Temperature difference is 0.1, within hysteresis band (below 0.2 heating threshold)
+        assert entity.hvac_action == HVACAction.HEATING
+
+    def test_hvac_action_within_hysteresis_maintains_idle(self):
+        """Test HVAC action maintains IDLE when within hysteresis band."""
+        dev = _make_device(current_temp=22.2, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        entity._is_heating = False
+        # Temperature difference is -0.2, within hysteresis band (above -0.3 idle threshold)
+        assert entity.hvac_action == HVACAction.IDLE
+
+    def test_hvac_action_none_when_temperatures_unavailable(self):
+        """Test HVAC action is None when temperatures are unavailable."""
+        dev = _make_device()
+        dev.get_current_temperature.return_value = None
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+        assert entity.hvac_action is None
+
+    def test_hvac_action_updates_heating_state(self):
+        """Test that accessing hvac_action updates internal heating state."""
+        dev = _make_device(current_temp=21.0, target_temp=22.0)
+        entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
+
+        # Initial check - should be heating
+        assert entity.hvac_action == HVACAction.HEATING
+        assert entity._is_heating is True
+        assert entity._last_heating_time is not None
+
+        # Update temperature to above target
+        dev.get_current_temperature.return_value = 22.5
+
+        # Check again - should still be heating during delay
+        assert entity.hvac_action == HVACAction.HEATING
+
+        # Simulate delay passing
+        entity._last_heating_time = dt_util.utcnow() - timedelta(seconds=HEAT_MODE_DELAY + 1)
+
+        # Now should be idle
+        assert entity.hvac_action == HVACAction.IDLE
+        assert entity._is_heating is False
+

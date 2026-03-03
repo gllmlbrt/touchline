@@ -11,6 +11,7 @@ This integration has been developed for and tested to be **fully functional** wi
 This custom integration provides enhanced functionality compared to the core Home Assistant Touchline integration:
 
 ### Enhanced Features
+- **Virtual Heat Mode**: Optional HVAC action monitoring with intelligent hysteresis control
 - **Extended System Monitoring**: Access to controller datetime, error codes, and system status sensors
 - **Time Synchronization**: Built-in button entity to sync controller time with Home Assistant
 - **Controller Metadata**: Retrieves ownerKurzID and additional R0 parameters from the controller
@@ -76,6 +77,41 @@ The integration will automatically discover all heating zones configured on your
 
 All configuration is done through the Home Assistant UI. No YAML configuration is required.
 
+### Optional Features
+
+#### Virtual Heat Mode
+
+The integration includes an optional **Virtual Heat Mode** feature that provides HVAC action monitoring for your climate entities. This feature displays whether your heating system is actively heating or idle, giving you better visibility into your system's operation.
+
+**Enabling Virtual Heat Mode:**
+1. Go to **Settings** → **Devices & Services**
+2. Find the "Roth Touchline" integration
+3. Click **Configure**
+4. Check the **"Virtual heat mode"** option
+5. Click **Submit**
+
+**How It Works:**
+
+Virtual heat mode uses intelligent temperature-based logic with hysteresis control to determine the heating state:
+
+- **Heating State**: Activated when the current temperature drops **0.2°C or more** below the target temperature
+- **Idle State**: Activated when the current temperature rises **0.3°C or more** above the target temperature (with a 5-minute delay)
+- **Hysteresis Band**: When temperature is within the -0.3°C to +0.2°C range relative to target, the system maintains its current state to prevent frequent switching
+
+**Benefits:**
+- **Better Visibility**: See at a glance whether your heating is actively working or idle
+- **Energy Monitoring**: Track heating activity for better energy management
+- **Automation Triggers**: Use HVAC action states in Home Assistant automations
+- **Reduced Oscillation**: Asymmetric hysteresis prevents rapid on/off cycling
+
+**Example Use Cases:**
+- Create automations that notify you when heating starts or stops
+- Track daily heating activity patterns
+- Optimize heating schedules based on actual heating demand
+- Monitor system efficiency
+
+**Note**: This is a virtual/simulated feature based on temperature differences. The Roth Touchline controller itself does not provide direct heating state information.
+
 ## Usage
 
 ### Climate Entities
@@ -83,6 +119,7 @@ All configuration is done through the Home Assistant UI. No YAML configuration i
 Each heating zone in your Roth Touchline system will be available as a climate entity. You can:
 - **View current temperature**: Check the current temperature reading from each zone
 - **Set target temperature**: Adjust the desired temperature for each zone
+- **Monitor HVAC action** (when virtual heat mode is enabled): See whether the zone is actively heating, idle, or off
 - **Change HVAC mode**:
   - `Heat`: Normal heating operation
   - `Off`: Holiday mode (disables heating)

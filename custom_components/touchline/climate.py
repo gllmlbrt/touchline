@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 from typing import Any, NamedTuple
 
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityFeature,
+    HVACAction,
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -15,10 +17,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import TouchlineDataUpdateCoordinator, ExtendedPyTouchline
 from .const import (
+    CONF_VIRTUAL_HEAT_MODE,
     DOMAIN,
+    HEAT_MODE_DELAY,
+    HEAT_MODE_HEATING_THRESHOLD,
+    HEAT_MODE_IDLE_THRESHOLD,
     OPERATION_MODE_AUTO,
     OPERATION_MODE_FROST,
     OPERATION_MODE_HOLIDAY,
@@ -59,8 +66,10 @@ async def async_setup_entry(
 
     await coordinator.async_refresh()
 
+    virtual_heat_mode = entry.options.get(CONF_VIRTUAL_HEAT_MODE, False)
+
     async_add_entities(
-        TouchlineClimate(coordinator, idx)
+        TouchlineClimate(coordinator, idx, virtual_heat_mode)
         for idx in range(len(coordinator.data))
     )
 
@@ -79,10 +88,12 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
         self,
         coordinator: TouchlineDataUpdateCoordinator,
         idx: int,
+        virtual_heat_mode: bool,
     ) -> None:
         """Initialize the climate entity."""
         super().__init__(coordinator)
         self._idx = idx
+        self._virtual_heat_mode = virtual_heat_mode
         self._attr_unique_id = f"{coordinator.host}_{idx}"
         device_id = self._device.get_device_id()
         self._attr_device_info = DeviceInfo(
@@ -93,6 +104,9 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
             serial_number=str(device_id) if device_id is not None else None,
             via_device=(DOMAIN, f"{coordinator.host}_controller"),
         )
+        # Track state for virtual heat mode
+        self._last_heating_time: datetime | None = None
+        self._is_heating = False
 
     @property
     def _device(self) -> ExtendedPyTouchline:
@@ -137,6 +151,64 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
         if op_mode == OPERATION_MODE_HOLIDAY:
             return HVACMode.OFF
         return HVACMode.HEAT
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Return the current HVAC action."""
+        # If not in HEAT mode, return OFF
+        if self.hvac_mode == HVACMode.OFF:
+            return HVACAction.OFF
+
+        # If virtual heat mode is not enabled, return None (no action reported)
+        if not self._virtual_heat_mode:
+            return None
+
+        # Get current and target temperatures
+        current_temp = self.current_temperature
+        target_temp = self.target_temperature
+
+        # If temperatures are unavailable, return None
+        if current_temp is None or target_temp is None:
+            return None
+
+        # Calculate temperature difference
+        temp_diff = target_temp - current_temp
+
+        # Logic as per requirements:
+        # - When temp drops 0.2°C below target -> immediately heating
+        # - When temp rises 0.3°C above target -> after 5 min delay, idle
+
+        if temp_diff >= HEAT_MODE_HEATING_THRESHOLD:
+            # Temperature is below target (needs heating)
+            self._is_heating = True
+            self._last_heating_time = dt_util.utcnow()
+            return HVACAction.HEATING
+        elif temp_diff <= -HEAT_MODE_IDLE_THRESHOLD:
+            # Temperature is above target
+            # Check if we should transition to idle after delay
+            if self._is_heating:
+                # We were heating, check if delay has passed
+                if self._last_heating_time is None:
+                    self._last_heating_time = dt_util.utcnow()
+
+                time_since_heating = dt_util.utcnow() - self._last_heating_time
+                if time_since_heating.total_seconds() >= HEAT_MODE_DELAY:
+                    # Delay passed, transition to idle
+                    self._is_heating = False
+                    return HVACAction.IDLE
+                else:
+                    # Still within delay period, remain heating
+                    return HVACAction.HEATING
+            else:
+                # Already idle
+                return HVACAction.IDLE
+        else:
+            # Within hysteresis band (between -0.3°C and +0.2°C)
+            # Maintain current state
+            if self._is_heating:
+                return HVACAction.HEATING
+            else:
+                return HVACAction.IDLE
 
     @property
     def preset_mode(self) -> str | None:

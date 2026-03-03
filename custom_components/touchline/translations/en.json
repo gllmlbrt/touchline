@@ -15,5 +15,18 @@
     "abort": {
       "already_configured": "This Touchline controller is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Touchline Options",
+        "data": {
+          "virtual_heat_mode": "Enable virtual heat mode (heating/idle based on temperature)"
+        },
+        "data_description": {
+          "virtual_heat_mode": "When enabled, climate entities will show 'heating' when temperature is below target and 'idle' when temperature is above target, with hysteresis and delay for stability."
+        }
+      }
+    }
   }
 }
