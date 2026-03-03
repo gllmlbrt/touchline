@@ -14,7 +14,8 @@ from custom_components.touchline.climate import (
 )
 from custom_components.touchline.const import (
     HEAT_MODE_DELAY,
-    HEAT_MODE_THRESHOLD,
+    HEAT_MODE_HEATING_THRESHOLD,
+    HEAT_MODE_IDLE_THRESHOLD,
     OPERATION_MODE_AUTO,
     OPERATION_MODE_FROST,
     OPERATION_MODE_HOLIDAY,
@@ -367,17 +368,17 @@ class TestVirtualHeatMode:
         assert entity.hvac_action is None
 
     def test_hvac_action_heating_when_temp_below_threshold(self):
-        """Test HVAC action is HEATING when temp is 0.3+ below target."""
+        """Test HVAC action is HEATING when temp is 0.2+ below target."""
         dev = _make_device(current_temp=21.0, target_temp=22.0)
         entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
-        # Temperature difference is 1.0, which is >= HEAT_MODE_THRESHOLD (0.3)
+        # Temperature difference is 1.0, which is >= HEAT_MODE_HEATING_THRESHOLD (0.2)
         assert entity.hvac_action == HVACAction.HEATING
 
     def test_hvac_action_heating_exactly_at_threshold(self):
-        """Test HVAC action is HEATING when temp is exactly at threshold below target."""
-        dev = _make_device(current_temp=21.7, target_temp=22.0)
+        """Test HVAC action is HEATING when temp is at or below heating threshold."""
+        dev = _make_device(current_temp=21.75, target_temp=22.0)
         entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
-        # Temperature difference is 0.3, which is exactly HEAT_MODE_THRESHOLD
+        # Temperature difference is 0.25, which is >= HEAT_MODE_HEATING_THRESHOLD (0.2)
         assert entity.hvac_action == HVACAction.HEATING
 
     def test_hvac_action_idle_when_temp_above_threshold_and_not_heating(self):
@@ -385,7 +386,7 @@ class TestVirtualHeatMode:
         dev = _make_device(current_temp=22.5, target_temp=22.0)
         entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
         entity._is_heating = False
-        # Temperature difference is -0.5, which is <= -HEAT_MODE_THRESHOLD (-0.3)
+        # Temperature difference is -0.5, which is <= -HEAT_MODE_IDLE_THRESHOLD (-0.3)
         assert entity.hvac_action == HVACAction.IDLE
 
     def test_hvac_action_remains_heating_during_delay(self):
@@ -410,18 +411,18 @@ class TestVirtualHeatMode:
 
     def test_hvac_action_within_hysteresis_maintains_heating(self):
         """Test HVAC action maintains HEATING when within hysteresis band."""
-        dev = _make_device(current_temp=21.85, target_temp=22.0)
+        dev = _make_device(current_temp=21.9, target_temp=22.0)
         entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
         entity._is_heating = True
-        # Temperature difference is 0.15, within hysteresis band
+        # Temperature difference is 0.1, within hysteresis band (below 0.2 heating threshold)
         assert entity.hvac_action == HVACAction.HEATING
 
     def test_hvac_action_within_hysteresis_maintains_idle(self):
         """Test HVAC action maintains IDLE when within hysteresis band."""
-        dev = _make_device(current_temp=22.15, target_temp=22.0)
+        dev = _make_device(current_temp=22.2, target_temp=22.0)
         entity = _make_entity(_make_coordinator([dev]), virtual_heat_mode=True)
         entity._is_heating = False
-        # Temperature difference is -0.15, within hysteresis band
+        # Temperature difference is -0.2, within hysteresis band (above -0.3 idle threshold)
         assert entity.hvac_action == HVACAction.IDLE
 
     def test_hvac_action_none_when_temperatures_unavailable(self):

@@ -24,7 +24,8 @@ from .const import (
     CONF_VIRTUAL_HEAT_MODE,
     DOMAIN,
     HEAT_MODE_DELAY,
-    HEAT_MODE_THRESHOLD,
+    HEAT_MODE_HEATING_THRESHOLD,
+    HEAT_MODE_IDLE_THRESHOLD,
     OPERATION_MODE_AUTO,
     OPERATION_MODE_FROST,
     OPERATION_MODE_HOLIDAY,
@@ -174,15 +175,15 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
         temp_diff = target_temp - current_temp
 
         # Logic as per requirements:
-        # - When temp drops 0.3 below target -> immediately heating
-        # - When temp rises 0.3 above target -> after 5 min delay, idle
+        # - When temp drops 0.2°C below target -> immediately heating
+        # - When temp rises 0.3°C above target -> after 5 min delay, idle
 
-        if temp_diff >= HEAT_MODE_THRESHOLD:
+        if temp_diff >= HEAT_MODE_HEATING_THRESHOLD:
             # Temperature is below target (needs heating)
             self._is_heating = True
             self._last_heating_time = dt_util.utcnow()
             return HVACAction.HEATING
-        elif temp_diff <= -HEAT_MODE_THRESHOLD:
+        elif temp_diff <= -HEAT_MODE_IDLE_THRESHOLD:
             # Temperature is above target
             # Check if we should transition to idle after delay
             if self._is_heating:
@@ -202,7 +203,7 @@ class TouchlineClimate(CoordinatorEntity[TouchlineDataUpdateCoordinator], Climat
                 # Already idle
                 return HVACAction.IDLE
         else:
-            # Within hysteresis band (between -0.3 and +0.3)
+            # Within hysteresis band (between -0.3°C and +0.2°C)
             # Maintain current state
             if self._is_heating:
                 return HVACAction.HEATING
